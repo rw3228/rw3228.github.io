@@ -1,0 +1,120 @@
+---
+title: "NYC Weather Dashboard"
+author: "Ruoqi Wang"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(plotly)
+library(p8105.datasets)
+library(lubridate)
+
+data("ny_noaa")
+
+weather_df =
+  ny_noaa |>
+  filter(
+    id == "USW00094728",
+    date >= as.Date("2010-01-01"),
+    date <= as.Date("2015-12-31")
+  ) |>
+  mutate(
+    tmax = as.numeric(tmax) / 10,
+    tmin = as.numeric(tmin) / 10,
+    month = month(date),
+    season = case_when(
+      month %in% c(12, 1, 2) ~ "Winter",
+      month %in% c(3, 4, 5) ~ "Spring",
+      month %in% c(6, 7, 8) ~ "Summer",
+      TRUE ~ "Fall"
+    ),
+    season = factor(
+      season,
+      levels = c("Winter", "Spring",
+                 "Summer", "Fall")
+    )
+  ) |>
+  filter(!is.na(tmax), !is.na(tmin))
+
+monthly_df =
+  weather_df |>
+  group_by(month) |>
+  summarize(
+    avg_tmax = mean(tmax),
+    .groups = "drop"
+  )
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Average Monthly Maximum Temperature
+
+```{r}
+plot_ly(
+  data = monthly_df,
+  x = ~month,
+  y = ~avg_tmax,
+  type = "scatter",
+  mode = "lines+markers"
+) |>
+  layout(
+    xaxis = list(
+      title = "Month",
+      tickmode = "array",
+      tickvals = 1:12,
+      ticktext = month.abb
+    ),
+    yaxis = list(
+      title = "Average Maximum Temperature (°C)"
+    )
+  )
+```
+
+### Maximum vs Minimum Temperature
+
+```{r}
+plot_ly(
+  data = weather_df,
+  x = ~tmax,
+  y = ~tmin,
+  type = "scatter",
+  mode = "markers",
+  color = ~season,
+  marker = list(opacity = 0.5)
+) |>
+  layout(
+    xaxis = list(
+      title = "Maximum Temperature (°C)"
+    ),
+    yaxis = list(
+      title = "Minimum Temperature (°C)"
+    )
+  )
+```
+
+Column {data-width=500}
+-----------------------------------------------------------------------
+
+### Maximum Temperature by Season
+
+```{r}
+plot_ly(
+  data = weather_df,
+  x = ~season,
+  y = ~tmax,
+  type = "box",
+  color = ~season
+) |>
+  layout(
+    xaxis = list(title = "Season"),
+    yaxis = list(
+      title = "Maximum Temperature (°C)"
+    ),
+    showlegend = FALSE
+  )
+```
